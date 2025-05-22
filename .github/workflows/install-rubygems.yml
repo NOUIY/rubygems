@@ -22,19 +22,20 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - { name: "3.1", value: 3.1.7 }
           - { name: "3.2", value: 3.2.8 }
           - { name: "3.3", value: 3.3.8 }
           - { name: "3.4", value: 3.4.3 }
-          - { name: jruby, value: jruby-9.4.12.0 }
+          - { name: jruby, value: jruby-10.0.0.1 }
           - { name: truffleruby, value: truffleruby-24.1.2 }
         openssl:
-          - { name: "openssl", value: true }
-          - { name: "no-openssl", value: false }
+          - { name: openssl, value: true }
+          - { name: no-openssl, value: false }
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Setup ruby
-        uses: ruby/setup-ruby@ca041f971d66735f3e5ff1e21cc13e2d51e7e535 # v1.233.0
+        uses: ruby/setup-ruby@13e7a03dc3ac6c3798f4570bfead2aed4d96abfb # v1.244.0
         with:
           ruby-version: ${{ matrix.ruby.value }}
           bundler: none
@@ -110,15 +111,16 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - { name: "3.1", value: 3.1.7 }
           - { name: "3.2", value: 3.2.8 }
           - { name: "3.3", value: 3.3.8 }
           - { name: "3.4", value: 3.4.3 }
-          - { name: jruby, value: jruby-9.4.12.0, rails-args: "--skip-webpack-install" }
+          - { name: jruby, value: jruby-10.0.0.1, rails-args: --skip-webpack-install }
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Setup ruby
-        uses: ruby/setup-ruby@ca041f971d66735f3e5ff1e21cc13e2d51e7e535 # v1.233.0
+        uses: ruby/setup-ruby@13e7a03dc3ac6c3798f4570bfead2aed4d96abfb # v1.244.0
         with:
           ruby-version: ${{ matrix.ruby.value }}
           bundler: none
@@ -126,7 +128,7 @@ jobs:
         uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
           distribution: temurin
-          java-version: 19.0.2
+          java-version: 21.0.7
         if: startsWith(matrix.ruby.name, 'jruby')
       - name: Install rubygems
         run: ruby setup.rb
@@ -140,7 +142,7 @@ jobs:
       - name: Generate a Rails application
         run: gem install rails --version 8.0.1 && rails new foo ${{ matrix.ruby.rails-args }}
         shell: bash
-        if: matrix.ruby.name != 'jruby' && matrix.ruby.name != '3.1'
+        if: matrix.ruby.name != '3.1'
       - name: Use gem installed in a bin dir different from where Ruby itself is installed
         run: gem install rspec --version 3.13.0 --install-dir foo && GEM_HOME=foo foo/bin/rspec --version
         shell: bash
@@ -157,8 +159,10 @@ jobs:
           - system
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - name: Setup original ruby
-        uses: ruby/setup-ruby@ca041f971d66735f3e5ff1e21cc13e2d51e7e535 # v1.233.0
+        uses: ruby/setup-ruby@13e7a03dc3ac6c3798f4570bfead2aed4d96abfb # v1.244.0
         with:
           ruby-version: 3.2
           bundler: none
@@ -179,7 +183,7 @@ jobs:
           GEM_HOME: bar
           GEM_PATH: bar
       - name: Setup final ruby
-        uses: ruby/setup-ruby@ca041f971d66735f3e5ff1e21cc13e2d51e7e535 # v1.233.0
+        uses: ruby/setup-ruby@13e7a03dc3ac6c3798f4570bfead2aed4d96abfb # v1.244.0
         with:
           ruby-version: 3.3
           bundler: none
@@ -191,3 +195,21 @@ jobs:
           GEM_PATH: bar
 
     timeout-minutes: 20
+
+  all-pass:
+    name: All install-rubygems jobs pass
+
+    if: always()
+
+    needs:
+      - install_rubygems_ubuntu
+      - install_rubygems_windows
+      - shared_gem_home
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: check dependent jobs
+        uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
