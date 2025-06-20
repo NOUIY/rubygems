@@ -1406,7 +1406,6 @@ end
     describe "default gem activation" do
       let(:exemptions) do
         exempts = %w[did_you_mean bundler uri pathname]
-        exempts << "etc" if (Gem.ruby_version < Gem::Version.new("3.2") || Gem.ruby_version >= Gem::Version.new("3.3.2")) && Gem.win_platform?
         exempts << "error_highlight" # added in Ruby 3.1 as a default gem
         exempts << "ruby2_keywords" # added in Ruby 3.1 as a default gem
         exempts << "syntax_suggest" # added in Ruby 3.2 as a default gem
@@ -1525,7 +1524,7 @@ end
   end
 
   describe "after setup" do
-    it "allows calling #gem on random objects", bundler: "< 3" do
+    it "allows calling #gem on random objects", bundler: "2" do
       install_gemfile <<-G
         source "https://gem.repo1"
         gem "myrack"
@@ -1540,7 +1539,7 @@ end
       expect(out).to eq("myrack-1.0.0")
     end
 
-    it "keeps Kernel#gem private", bundler: "3" do
+    it "keeps Kernel#gem private", bundler: "4" do
       install_gemfile <<-G
         source "https://gem.repo1"
         gem "myrack"
@@ -1552,7 +1551,7 @@ end
         puts "FAIL"
       RUBY
 
-      expect(last_command.stdboth).not_to include "FAIL"
+      expect(stdboth).not_to include "FAIL"
       expect(err).to match(/private method [`']gem'/)
     end
 
@@ -1568,7 +1567,7 @@ end
         puts "FAIL"
       RUBY
 
-      expect(last_command.stdboth).not_to include "FAIL"
+      expect(stdboth).not_to include "FAIL"
       expect(err).to match(/private method [`']require'/)
     end
 
