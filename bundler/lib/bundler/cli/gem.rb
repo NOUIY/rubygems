@@ -31,7 +31,6 @@ module Bundler
       @extension = options[:ext]
 
       validate_ext_name if @extension
-      validate_rust_builder_rubygems_version if @extension == "rust"
     end
 
     def run
@@ -69,12 +68,14 @@ module Bundler
         test: options[:test],
         ext: extension,
         exe: options[:exe],
+        bundle: options[:bundle],
         bundler_version: bundler_dependency_version,
         git: use_git,
         github_username: github_username.empty? ? "[USERNAME]" : github_username,
         required_ruby_version: required_ruby_version,
         rust_builder_required_rubygems_version: rust_builder_required_rubygems_version,
         minitest_constant_name: minitest_constant_name,
+        ignore_paths: %w[bin/],
       }
       ensure_safe_gem_name(name, constant_array)
 
@@ -95,7 +96,18 @@ module Bundler
         bin/setup
       ]
 
-      templates.merge!("gitignore.tt" => ".gitignore") if use_git
+      case Bundler.preferred_gemfile_name
+      when "Gemfile"
+        config[:ignore_paths] << "Gemfile"
+      when "gems.rb"
+        config[:ignore_paths] << "gems.rb"
+        config[:ignore_paths] << "gems.locked"
+      end
+
+      if use_git
+        templates.merge!("gitignore.tt" => ".gitignore")
+        config[:ignore_paths] << ".gitignore"
+      end
 
       if test_framework = ask_and_set_test_framework
         config[:test] = test_framework
@@ -109,6 +121,8 @@ module Bundler
             "spec/newgem_spec.rb.tt" => "spec/#{namespaced_path}_spec.rb"
           )
           config[:test_task] = :spec
+          config[:ignore_paths] << ".rspec"
+          config[:ignore_paths] << "spec/"
         when "minitest"
           # Generate path for minitest target file (FileList["test/**/test_*.rb"])
           #   foo     => test/test_foo.rb
@@ -123,12 +137,14 @@ module Bundler
             "test/minitest/test_newgem.rb.tt" => "test/#{minitest_namespaced_path}.rb"
           )
           config[:test_task] = :test
+          config[:ignore_paths] << "test/"
         when "test-unit"
           templates.merge!(
             "test/test-unit/test_helper.rb.tt" => "test/test_helper.rb",
             "test/test-unit/newgem_test.rb.tt" => "test/#{namespaced_path}_test.rb"
           )
           config[:test_task] = :test
+          config[:ignore_paths] << "test/"
         end
       end
 
@@ -136,13 +152,13 @@ module Bundler
       case config[:ci]
       when "github"
         templates.merge!("github/workflows/main.yml.tt" => ".github/workflows/main.yml")
-        config[:ci_config_path] = ".github "
+        config[:ignore_paths] << ".github/"
       when "gitlab"
         templates.merge!("gitlab-ci.yml.tt" => ".gitlab-ci.yml")
-        config[:ci_config_path] = ".gitlab-ci.yml "
+        config[:ignore_paths] << ".gitlab-ci.yml"
       when "circle"
         templates.merge!("circleci/config.yml.tt" => ".circleci/config.yml")
-        config[:ci_config_path] = ".circleci "
+        config[:ignore_paths] << ".circleci/"
       end
 
       if ask_and_set(:mit, "Do you want to license your code permissively under the MIT license?",
@@ -185,10 +201,12 @@ module Bundler
         config[:linter_version] = rubocop_version
         Bundler.ui.info "RuboCop enabled in config"
         templates.merge!("rubocop.yml.tt" => ".rubocop.yml")
+        config[:ignore_paths] << ".rubocop.yml"
       when "standard"
         config[:linter_version] = standard_version
         Bundler.ui.info "Standard enabled in config"
         templates.merge!("standard.yml.tt" => ".standard.yml")
+        config[:ignore_paths] << ".standard.yml"
       end
 
       if config[:exe]
@@ -239,6 +257,13 @@ module Bundler
 
       if use_git
         IO.popen(%w[git add .], { chdir: target }, &:read)
+      end
+
+      if config[:bundle]
+        Bundler.ui.info "Running bundle install in the new gem directory."
+        Dir.chdir(target) do
+          system("bundle install")
+        end
       end
 
       # Open gemspec in editor
@@ -446,7 +471,7 @@ module Bundler
     end
 
     def required_ruby_version
-      "3.1.0"
+      "3.2.0"
     end
 
     def rubocop_version
@@ -455,13 +480,6 @@ module Bundler
 
     def standard_version
       "1.3"
-    end
-
-    def validate_rust_builder_rubygems_version
-      if Gem::Version.new(rust_builder_required_rubygems_version) > Gem.rubygems_version
-        Bundler.ui.error "Your RubyGems version (#{Gem.rubygems_version}) is too old to build Rust extension. Please update your RubyGems using `gem update --system` or any other way and try again."
-        exit 1
-      end
     end
   end
 end

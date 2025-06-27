@@ -53,7 +53,6 @@ module Bundler
   autoload :FeatureFlag,            File.expand_path("bundler/feature_flag", __dir__)
   autoload :FREEBSD,                File.expand_path("bundler/constants", __dir__)
   autoload :GemHelper,              File.expand_path("bundler/gem_helper", __dir__)
-  autoload :GemHelpers,             File.expand_path("bundler/gem_helpers", __dir__)
   autoload :GemVersionPromoter,     File.expand_path("bundler/gem_version_promoter", __dir__)
   autoload :Graph,                  File.expand_path("bundler/graph", __dir__)
   autoload :Index,                  File.expand_path("bundler/index", __dir__)
@@ -174,7 +173,7 @@ module Bundler
       self_manager.restart_with_locked_bundler_if_needed
     end
 
-    # Automatically install dependencies if Bundler.settings[:auto_install] exists.
+    # Automatically install dependencies if settings[:auto_install] exists.
     # This is set through config cmd `bundle config set --global auto_install 1`.
     #
     # Note that this method `nil`s out the global Definition object, so it
@@ -459,6 +458,10 @@ module Bundler
       Gem::Platform.local
     end
 
+    def generic_local_platform
+      Gem::Platform.generic(local_platform)
+    end
+
     def default_gemfile
       SharedHelpers.default_gemfile
     end
@@ -477,11 +480,11 @@ module Bundler
       # install binstubs there instead. Unfortunately, RubyGems doesn't expose
       # that directory at all, so rather than parse .gemrc ourselves, we allow
       # the directory to be set as well, via `bundle config set --local bindir foo`.
-      Bundler.settings[:system_bindir] || Bundler.rubygems.gem_bindir
+      settings[:system_bindir] || Bundler.rubygems.gem_bindir
     end
 
     def preferred_gemfile_name
-      Bundler.settings[:init_gems_rb] ? "gems.rb" : "Gemfile"
+      settings[:init_gems_rb] ? "gems.rb" : "Gemfile"
     end
 
     def use_system_gems?
@@ -564,7 +567,7 @@ module Bundler
     end
 
     def feature_flag
-      @feature_flag ||= FeatureFlag.new(VERSION)
+      @feature_flag ||= FeatureFlag.new(settings[:simulate_version] || VERSION)
     end
 
     def reset!
@@ -580,7 +583,6 @@ module Bundler
 
     def reset_paths!
       @bin_path = nil
-      @bundler_major_version = nil
       @bundle_path = nil
       @configure = nil
       @configured_bundle_path = nil

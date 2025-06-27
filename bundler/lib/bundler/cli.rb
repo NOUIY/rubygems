@@ -130,7 +130,7 @@ module Bundler
 
       if man_pages.include?(command)
         man_page = man_pages[command]
-        if Bundler.which("man") && !man_path.match?(%r{^file:/.+!/META-INF/jruby.home/.+})
+        if Bundler.which("man") && !man_path.match?(%r{^(?:file:/.+!|uri:classloader:)/META-INF/jruby.home/.+})
           Kernel.exec("man", man_page)
         else
           puts File.read("#{man_path}/#{File.basename(man_page)}.ronn")
@@ -512,7 +512,7 @@ module Bundler
       end
     end
 
-    unless Bundler.feature_flag.bundler_3_mode?
+    unless Bundler.feature_flag.bundler_4_mode?
       desc "viz [OPTIONS]", "Generates a visual dependency graph", hide: true
       long_desc <<-D
         Viz generates a PNG file of the current Gemfile as a dependency graph.
@@ -544,6 +544,7 @@ module Bundler
     method_option :ci, type: :string, lazy_default: Bundler.settings["gem.ci"] || "", enum: %w[github gitlab circle], desc: "Generate CI configuration, either GitHub Actions, GitLab CI or CircleCI. Set a default with `bundle config set --global gem.ci (github|gitlab|circle)`"
     method_option :linter, type: :string, lazy_default: Bundler.settings["gem.linter"] || "", enum: %w[rubocop standard], desc: "Add a linter and code formatter, either RuboCop or Standard. Set a default with `bundle config set --global gem.linter (rubocop|standard)`"
     method_option :github_username, type: :string, default: Bundler.settings["gem.github_username"], banner: "Set your username on GitHub", desc: "Fill in GitHub username on README so that you don't have to do it manually. Set a default with `bundle config set --global gem.github_username <your_username>`."
+    method_option :bundle, type: :boolean, default: Bundler.settings["gem.bundle"], desc: "Automatically run `bundle install` after creation. Set a default with `bundle config set --global gem.bundle true`"
 
     def gem(name)
       require_relative "cli/gem"
