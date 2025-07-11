@@ -111,14 +111,14 @@ class Release
 
   def self.install_dependencies!
     system(
-      "ruby",
-      "-I",
-      File.expand_path("../lib", __dir__),
-      File.expand_path("../bundler/spec/support/bundle.rb", __dir__),
+      { "RUBYOPT" => "-I#{File.expand_path("../lib", __dir__)}" },
+      File.expand_path("../bundler/bin/bundle", __dir__),
       "install",
       "--gemfile=#{File.expand_path("bundler/release_gems.rb", __dir__)}",
       exception: true
     )
+
+    Gem.clear_paths
   end
 
   def self.for_bundler(version)
@@ -206,7 +206,7 @@ class Release
           "Cherry-picking change logs from future RubyGems #{@rubygems.version} and Bundler #{@bundler.version} into master."
         )
       end
-    rescue StandardError
+    rescue StandardError, LoadError
       system("git", "checkout", initial_branch)
       raise
     end
